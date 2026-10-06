@@ -1,4 +1,3 @@
-"""Rooms domain: create a room, join it with a code, list who is in it."""
 import random
 import sqlite3
 
@@ -18,13 +17,12 @@ CREATE TABLE IF NOT EXISTS members (
 );
 """
 
-# No 0/O or 1/I, so codes are easy to read out loud.
 CODE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-MAX_NAME_LENGTH = 40
+MAX_NAME_LENGTH = 30
 
 
 class RoomError(Exception):
-    """Raised when the user asks for something the rules don't allow."""
+    pass
 
 
 def make_code():
@@ -34,14 +32,13 @@ def make_code():
 def check_name(name):
     name = name.strip()
     if not name:
-        raise RoomError("Name can't be empty.")
+        raise RoomError("Please enter a name.")
     if len(name) > MAX_NAME_LENGTH:
         raise RoomError(f"Name must be at most {MAX_NAME_LENGTH} characters.")
     return name
 
 
 def create_room(conn, room_name, host_name):
-    """Create a room with its creator as host. Returns the room code."""
     room_name = check_name(room_name)
     host_name = check_name(host_name)
     code = make_code()
@@ -55,17 +52,16 @@ def create_room(conn, room_name, host_name):
 
 
 def join_room(conn, code, name):
-    """Add a person to an existing room. Returns the room code."""
     name = check_name(name)
     room = get_room(conn, code)
     if room is None:
-        raise RoomError("No room with that code.")
+        raise RoomError("We couldn't find a room with that code.")
     try:
         conn.execute(
             "INSERT INTO members (room_id, name) VALUES (?, ?)", (room["id"], name)
         )
     except sqlite3.IntegrityError:
-        raise RoomError("That name is already taken in this room.")
+        raise RoomError("Someone in this room already has that name. Try another one.")
     conn.commit()
     return room["code"]
 
@@ -76,7 +72,6 @@ def get_room(conn, code):
 
 
 def list_members(conn, room_id):
-    """Host first, then everyone else in the order they joined."""
     return conn.execute(
         "SELECT * FROM members WHERE room_id = ? ORDER BY is_host DESC, id",
         (room_id,),

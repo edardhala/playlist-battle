@@ -23,7 +23,7 @@ def test_add_song(conn):
     assert songs[0]["added_at"]
 
 
-@pytest.mark.parametrize("title, artist", [("", "Queen"), ("Song", "  "), ("x" * 101, "Queen")])
+@pytest.mark.parametrize("title, artist", [("", "Queen"), ("Song", "  "), ("x" * 81, "Queen")])
 def test_add_song_rejects_bad_text(conn, title, artist):
     with pytest.raises(BattleError):
         service.add_song(conn, 1, title, artist, "Ana")

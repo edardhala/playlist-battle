@@ -1,4 +1,3 @@
-"""Entry point: `python app.py` starts the whole app as one process."""
 from flask import Flask, jsonify, render_template
 
 import db
@@ -9,9 +8,7 @@ from rooms.routes import bp as rooms_bp
 
 def create_app(env=None):
     config = load_config(env)
-    # Make sure the SQLite folder exists, so startup needs no manual setup.
     config["DATA_DIR"].mkdir(parents=True, exist_ok=True)
-    # Create the tables on startup, so there is no manual migration step.
     db.init_db(config["DATABASE"], rooms_service.SCHEMA)
 
     app = Flask(__name__)
@@ -32,5 +29,4 @@ def create_app(env=None):
 
 if __name__ == "__main__":
     app = create_app()
-    # 0.0.0.0 so the app is reachable from outside a container later.
     app.run(host="0.0.0.0", port=app.config["PORT"])

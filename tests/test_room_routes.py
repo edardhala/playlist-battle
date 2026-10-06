@@ -21,7 +21,7 @@ def test_create_room_then_friend_joins(client):
 def test_error_is_shown_on_home_page(client):
     response = client.post("/rooms/join", data={"code": "ZZZZZZ", "your_name": "Ben"})
     assert response.status_code == 400
-    assert "No room with that code" in response.get_data(as_text=True)
+    assert "find a room with that code" in response.get_data(as_text=True)
 
 
 def test_unknown_room_is_404(client):

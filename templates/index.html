@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
   <h1>Playlist Battle</h1>
-  <p>Create a room, add songs with your friends, and vote for what plays next.</p>
+  <p>Start a room, invite your friends with a code, and let the votes decide what plays next.</p>
 
   {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 
@@ -11,7 +11,7 @@
     <input id="room_name" name="room_name" required>
     <label for="host_name">Your name</label>
     <input id="host_name" name="your_name" required>
-    <button type="submit">Create room</button>
+    <button type="submit">Start the battle</button>
   </form>
 
   <h2>Join a room</h2>
@@ -20,6 +20,6 @@
     <input id="code" name="code" required>
     <label for="guest_name">Your name</label>
     <input id="guest_name" name="your_name" required>
-    <button type="submit">Join</button>
+    <button type="submit">Join the battle</button>
   </form>
 {% endblock %}

@@ -1,8 +1,3 @@
-"""Battle domain: songs in a room (votes and ranking come next).
-
-This module never reads the rooms tables. It only stores the room's id,
-so it could become its own service later (see ADR 2).
-"""
 from datetime import datetime, timezone
 
 SCHEMA = """
@@ -16,24 +11,23 @@ CREATE TABLE IF NOT EXISTS songs (
 );
 """
 
-MAX_TEXT_LENGTH = 100
+MAX_TEXT_LENGTH = 80
 
 
 class BattleError(Exception):
-    """Raised when a song can't be added because of the rules."""
+    pass
 
 
 def check_text(value, field):
     value = value.strip()
     if not value:
-        raise BattleError(f"{field} can't be empty.")
+        raise BattleError(f"Please enter the {field.lower()}.")
     if len(value) > MAX_TEXT_LENGTH:
         raise BattleError(f"{field} must be at most {MAX_TEXT_LENGTH} characters.")
     return value
 
 
 def add_song(conn, room_id, title, artist, added_by):
-    """Save a new song in a room. Returns the new song's id."""
     title = check_text(title, "Title")
     artist = check_text(artist, "Artist")
     added_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -47,7 +41,6 @@ def add_song(conn, room_id, title, artist, added_by):
 
 
 def list_songs(conn, room_id):
-    """All songs in a room, newest first."""
     return conn.execute(
         "SELECT * FROM songs WHERE room_id = ? ORDER BY id DESC", (room_id,)
     ).fetchall()

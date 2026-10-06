@@ -1,8 +1,8 @@
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
-  background: #111;
-  color: #eee;
+  background: #121212;
+  color: #f5f5f5;
 }
 
 main {
@@ -12,7 +12,7 @@ main {
 }
 
 a {
-  color: #8ab4ff;
+  color: #1db954;
 }
 
 form {
@@ -27,5 +27,5 @@ button {
 }
 
 .error {
-  color: #ff8a8a;
+  color: #ff6b6b;
 }

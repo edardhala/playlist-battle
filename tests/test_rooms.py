@@ -23,7 +23,7 @@ def test_check_name_trims_spaces():
     assert service.check_name("  Ana ") == "Ana"
 
 
-@pytest.mark.parametrize("bad", ["", "   ", "x" * 41])
+@pytest.mark.parametrize("bad", ["", "   ", "x" * 31])
 def test_check_name_rejects_bad_names(bad):
     with pytest.raises(RoomError):
         service.check_name(bad)
@@ -39,20 +39,20 @@ def test_create_room_adds_host(conn):
 
 def test_join_room(conn):
     code = service.create_room(conn, "Road trip", "Ana")
-    service.join_room(conn, code.lower(), "Ben")  # code works in lowercase too
+    service.join_room(conn, code.lower(), "Ben")
     room = service.get_room(conn, code)
     names = [m["name"] for m in service.list_members(conn, room["id"])]
     assert names == ["Ana", "Ben"]
 
 
 def test_join_unknown_room(conn):
-    with pytest.raises(RoomError, match="No room"):
+    with pytest.raises(RoomError, match="couldn.t find"):
         service.join_room(conn, "ZZZZZZ", "Ben")
 
 
 def test_join_with_taken_name(conn):
     code = service.create_room(conn, "Road trip", "Ana")
-    with pytest.raises(RoomError, match="already taken"):
+    with pytest.raises(RoomError, match="already has that name"):
         service.join_room(conn, code, "Ana")
 
 

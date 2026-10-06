@@ -1,4 +1,3 @@
-"""Web pages for the rooms domain. The rules live in rooms/service.py."""
 from flask import Blueprint, abort, redirect, render_template, request, url_for
 
 from db import get_db

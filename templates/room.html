@@ -3,7 +3,7 @@
 {% block content %}
   <p><a href="{{ url_for('index') }}">← Home</a></p>
   <h1>{{ room.name }}</h1>
-  <p>Room code: <strong>{{ room.code }}</strong> (share it so friends can join)</p>
+  <p>Room code: <strong>{{ room.code }}</strong> (send it to your friends so they can join)</p>
 
   <h2>People</h2>
   <ul>
@@ -11,6 +11,4 @@
       <li>{{ member.name }}{% if member.is_host %} (host){% endif %}</li>
     {% endfor %}
   </ul>
-
-  <p><em>Songs and voting are coming soon.</em></p>
 {% endblock %}
