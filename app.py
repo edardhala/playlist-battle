@@ -1,16 +1,23 @@
 """Entry point: `python app.py` starts the whole app as one process."""
 from flask import Flask, jsonify, render_template
 
+import db
 from config import load_config
+from rooms import service as rooms_service
+from rooms.routes import bp as rooms_bp
 
 
 def create_app(env=None):
     config = load_config(env)
     # Make sure the SQLite folder exists, so startup needs no manual setup.
     config["DATA_DIR"].mkdir(parents=True, exist_ok=True)
+    # Create the tables on startup, so there is no manual migration step.
+    db.init_db(config["DATABASE"], rooms_service.SCHEMA)
 
     app = Flask(__name__)
     app.config.update(config)
+    app.teardown_appcontext(db.close_db)
+    app.register_blueprint(rooms_bp)
 
     @app.get("/")
     def index():
