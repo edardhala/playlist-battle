@@ -1,3 +1,4 @@
+import sqlite3
 from datetime import datetime, timezone
 
 SCHEMA = """
@@ -8,6 +9,13 @@ CREATE TABLE IF NOT EXISTS songs (
     artist    TEXT NOT NULL,
     added_by  TEXT NOT NULL,
     added_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS votes (
+    id       INTEGER PRIMARY KEY,
+    song_id  INTEGER NOT NULL REFERENCES songs(id),
+    voter    TEXT NOT NULL,
+    UNIQUE (song_id, voter)
 );
 """
 
@@ -42,5 +50,24 @@ def add_song(conn, room_id, title, artist, added_by):
 
 def list_songs(conn, room_id):
     return conn.execute(
-        "SELECT * FROM songs WHERE room_id = ? ORDER BY id DESC", (room_id,)
+        "SELECT songs.*, COUNT(votes.id) AS votes FROM songs"
+        " LEFT JOIN votes ON votes.song_id = songs.id"
+        " WHERE songs.room_id = ? GROUP BY songs.id ORDER BY songs.id DESC",
+        (room_id,),
     ).fetchall()
+
+
+def vote(conn, song_id, voter):
+    song = conn.execute("SELECT id FROM songs WHERE id = ?", (song_id,)).fetchone()
+    if song is None:
+        raise BattleError("That song doesn't exist.")
+    try:
+        conn.execute("INSERT INTO votes (song_id, voter) VALUES (?, ?)", (song_id, voter))
+    except sqlite3.IntegrityError:
+        raise BattleError("You already voted for this song.")
+    conn.commit()
+
+
+def remove_vote(conn, song_id, voter):
+    conn.execute("DELETE FROM votes WHERE song_id = ? AND voter = ?", (song_id, voter))
+    conn.commit()
