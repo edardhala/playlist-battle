@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from battle import service
@@ -61,3 +63,32 @@ def test_remove_vote(conn):
     service.vote(conn, song_id, "Ana")
     service.remove_vote(conn, song_id, "Ana")
     assert service.list_songs(conn, 1)[0]["votes"] == 0
+
+
+NOW = datetime(2026, 10, 7, 12, 0, tzinfo=timezone.utc)
+
+
+def hours_ago(hours):
+    return (NOW - timedelta(hours=hours)).isoformat()
+
+
+def test_more_votes_means_higher_score():
+    assert service.hot_score(5, hours_ago(1), NOW) > service.hot_score(1, hours_ago(1), NOW)
+
+
+def test_older_song_scores_lower_with_same_votes():
+    assert service.hot_score(3, hours_ago(1), NOW) > service.hot_score(3, hours_ago(10), NOW)
+
+
+def test_new_song_can_beat_old_popular_song():
+    assert service.hot_score(1, hours_ago(0), NOW) > service.hot_score(5, hours_ago(24), NOW)
+
+
+def test_ranked_songs_puts_most_voted_first(conn):
+    quiet = service.add_song(conn, 1, "Quiet", "A", "Ana")
+    loud = service.add_song(conn, 1, "Loud", "B", "Ben")
+    service.vote(conn, quiet, "Ana")
+    for voter in ["Ana", "Ben", "Cleo"]:
+        service.vote(conn, loud, voter)
+    titles = [song["title"] for song in service.ranked_songs(conn, 1)]
+    assert titles == ["Loud", "Quiet"]

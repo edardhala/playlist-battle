@@ -71,3 +71,14 @@ def vote(conn, song_id, voter):
 def remove_vote(conn, song_id, voter):
     conn.execute("DELETE FROM votes WHERE song_id = ? AND voter = ?", (song_id, voter))
     conn.commit()
+
+
+def hot_score(votes, added_at, now):
+    age_hours = (now - datetime.fromisoformat(added_at)).total_seconds() / 3600
+    return (votes + 1) / (age_hours + 2) ** 1.5
+
+
+def ranked_songs(conn, room_id, now=None):
+    now = now or datetime.now(timezone.utc)
+    songs = list_songs(conn, room_id)
+    return sorted(songs, key=lambda song: hot_score(song["votes"], song["added_at"], now), reverse=True)
