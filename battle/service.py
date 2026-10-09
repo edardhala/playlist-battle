@@ -73,6 +73,11 @@ def remove_vote(conn, song_id, voter):
     conn.commit()
 
 
+def songs_voted_by(conn, voter):
+    rows = conn.execute("SELECT song_id FROM votes WHERE voter = ?", (voter,)).fetchall()
+    return {row["song_id"] for row in rows}
+
+
 def hot_score(votes, added_at, now):
     age_hours = (now - datetime.fromisoformat(added_at)).total_seconds() / 3600
     return (votes + 1) / (age_hours + 2) ** 1.5

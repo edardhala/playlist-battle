@@ -34,3 +34,11 @@ def vote(code, song_id):
     except BattleError as err:
         return redirect(url_for("rooms.show", code=code, me=me, error=str(err)))
     return redirect(url_for("rooms.show", code=code, me=me))
+
+
+@bp.post("/rooms/<code>/songs/<int:song_id>/unvote")
+def unvote(code, song_id):
+    me = request.form["me"]
+    find_room_id(code)
+    service.remove_vote(get_db(), song_id, me)
+    return redirect(url_for("rooms.show", code=code, me=me))

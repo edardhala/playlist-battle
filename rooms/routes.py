@@ -34,11 +34,14 @@ def show(code):
         abort(404)
     members = service.list_members(conn, room["id"])
     songs = battle_service.ranked_songs(conn, room["id"])
+    me = request.args.get("me")
+    my_votes = battle_service.songs_voted_by(conn, me) if me else set()
     return render_template(
         "room.html",
         room=room,
         members=members,
         songs=songs,
-        me=request.args.get("me"),
+        me=me,
+        my_votes=my_votes,
         error=request.args.get("error"),
     )

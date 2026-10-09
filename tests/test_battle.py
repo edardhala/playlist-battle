@@ -92,3 +92,11 @@ def test_ranked_songs_puts_most_voted_first(conn):
         service.vote(conn, loud, voter)
     titles = [song["title"] for song in service.ranked_songs(conn, 1)]
     assert titles == ["Loud", "Quiet"]
+
+
+def test_songs_voted_by(conn):
+    first = service.add_song(conn, 1, "First", "A", "Ana")
+    service.add_song(conn, 1, "Second", "B", "Ana")
+    service.vote(conn, first, "Ben")
+    assert service.songs_voted_by(conn, "Ben") == {first}
+    assert service.songs_voted_by(conn, "Cleo") == set()

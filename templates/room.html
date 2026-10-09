@@ -14,7 +14,12 @@
         <li>
           <strong>{{ song.title }}</strong> by {{ song.artist }}
           ({{ song.votes }} vote{% if song.votes != 1 %}s{% endif %}, added by {{ song.added_by }})
-          {% if me %}
+          {% if me and song.id in my_votes %}
+            <form class="inline" method="post" action="{{ url_for('battle.unvote', code=room.code, song_id=song.id) }}">
+              <input type="hidden" name="me" value="{{ me }}">
+              <button type="submit">Remove vote</button>
+            </form>
+          {% elif me %}
             <form class="inline" method="post" action="{{ url_for('battle.vote', code=room.code, song_id=song.id) }}">
               <input type="hidden" name="me" value="{{ me }}">
               <button type="submit">Vote</button>

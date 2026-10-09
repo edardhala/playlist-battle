@@ -39,3 +39,14 @@ def test_voting_twice_shows_error(client, code):
 def test_songs_in_unknown_room_is_404(client):
     response = client.post("/rooms/ZZZZZZ/songs", data={"title": "A", "artist": "B", "me": "Ana"})
     assert response.status_code == 404
+
+
+def test_remove_vote_button(client, code):
+    client.post(f"/rooms/{code}/songs", data={"title": "Yellow", "artist": "Coldplay", "me": "Ana"})
+    client.post(f"/rooms/{code}/songs/1/vote", data={"me": "Ana"})
+    assert "Remove vote" in client.get(f"/rooms/{code}?me=Ana").get_data(as_text=True)
+
+    client.post(f"/rooms/{code}/songs/1/unvote", data={"me": "Ana"})
+    page = client.get(f"/rooms/{code}?me=Ana").get_data(as_text=True)
+    assert "0 votes," in page
+    assert "Remove vote" not in page
