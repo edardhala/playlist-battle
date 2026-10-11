@@ -4,9 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Playlist Battle{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='logo.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  <a class="site-header" href="{{ url_for('index') }}">
+    <img class="logo" src="{{ url_for('static', filename='logo.svg') }}" alt="">
+    Playlist Battle
+  </a>
   <main>
     {% block content %}{% endblock %}
   </main>

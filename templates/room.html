@@ -1,58 +1,99 @@
 {% extends "base.html" %}
 {% block title %}{{ room.name }} · Playlist Battle{% endblock %}
 {% block content %}
-  <p><a href="{{ url_for('index') }}">← Home</a></p>
-  <h1>{{ room.name }}</h1>
-  <p>Room code: <strong>{{ room.code }}</strong></p>
-  <p>Share this link with your friends so they can join:
-    <a href="{{ url_for('index', code=room.code, _external=True) }}">{{ url_for('index', code=room.code, _external=True) }}</a>
-  </p>
+  {% set share_link = url_for('index', code=room.code, _external=True) %}
+  {% set top_votes = songs | map(attribute='votes') | max if songs else 0 %}
+
+  <a class="back" href="{{ url_for('index') }}">← Home</a>
+
+  <section class="card">
+    <div class="room-header">
+      <h1>{{ room.name }}</h1>
+      <span class="code-badge" aria-label="Room code">{{ room.code }}</span>
+    </div>
+    <div class="share">
+      Share this link with your friends so they can join:
+      <a href="{{ share_link }}">{{ share_link }}</a>
+    </div>
+  </section>
 
   {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 
-  <h2>Playlist</h2>
-  {% if songs %}
-    <ol>
-      {% for song in songs %}
-        <li>
-          <strong>{{ song.title }}</strong> by {{ song.artist }}
-          ({{ song.votes }} vote{% if song.votes != 1 %}s{% endif %}, added by {{ song.added_by }})
-          {% if me and song.id in my_votes %}
-            <form class="inline" method="post" action="{{ url_for('battle.unvote', code=room.code, song_id=song.id) }}">
-              <input type="hidden" name="me" value="{{ me }}">
-              <button type="submit">Remove vote</button>
-            </form>
-          {% elif me %}
-            <form class="inline" method="post" action="{{ url_for('battle.vote', code=room.code, song_id=song.id) }}">
-              <input type="hidden" name="me" value="{{ me }}">
-              <button type="submit">Vote</button>
-            </form>
-          {% endif %}
-        </li>
-      {% endfor %}
-    </ol>
-  {% else %}
-    <p>No songs yet.</p>
-  {% endif %}
+  <div class="room-layout">
+    <div>
+      <section class="card">
+        <h2>Playlist</h2>
+        {% if songs %}
+          <ol class="playlist">
+            {% for song in songs %}
+              <li class="song">
+                <span class="rank rank-{{ loop.index }}">{{ loop.index }}</span>
+                <div>
+                  <div class="song-title">{{ song.title }}</div>
+                  <div class="song-meta">{{ song.artist }} · {{ song.votes }} vote{% if song.votes != 1 %}s{% endif %}, added by {{ song.added_by }}</div>
+                  <div class="vote-bar" aria-hidden="true">
+                    <span style="width: {{ (song.votes / top_votes * 100) if top_votes else 0 }}%"></span>
+                  </div>
+                </div>
+                {% if me and song.id in my_votes %}
+                  <form class="inline" method="post" action="{{ url_for('battle.unvote', code=room.code, song_id=song.id) }}">
+                    <input type="hidden" name="me" value="{{ me }}">
+                    <button class="button-ghost button-small" type="submit">Remove vote</button>
+                  </form>
+                {% elif me %}
+                  <form class="inline" method="post" action="{{ url_for('battle.vote', code=room.code, song_id=song.id) }}">
+                    <input type="hidden" name="me" value="{{ me }}">
+                    <button class="button-small" type="submit">▲ Vote</button>
+                  </form>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <div class="empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path d="M9 18V5l12-2v13"/>
+              <circle cx="6" cy="18" r="3"/>
+              <circle cx="18" cy="16" r="3"/>
+            </svg>
+            <p>No songs yet. Add the first one!</p>
+          </div>
+        {% endif %}
+      </section>
+    </div>
 
-  {% if me %}
-    <h2>Add a song</h2>
-    <form method="post" action="{{ url_for('battle.add', code=room.code) }}">
-      <input type="hidden" name="me" value="{{ me }}">
-      <label for="title">Title</label>
-      <input id="title" name="title" required>
-      <label for="artist">Artist</label>
-      <input id="artist" name="artist" required>
-      <button type="submit">Add song</button>
-    </form>
-  {% else %}
-    <p><a href="{{ url_for('index') }}">Join this room</a> to add songs and vote.</p>
-  {% endif %}
+    <div>
+      {% if me %}
+        <section class="card">
+          <h2>Add a song</h2>
+          <form method="post" action="{{ url_for('battle.add', code=room.code) }}">
+            <input type="hidden" name="me" value="{{ me }}">
+            <label for="title">Title</label>
+            <input id="title" name="title" required>
+            <label for="artist">Artist</label>
+            <input id="artist" name="artist" required>
+            <button type="submit">Add song</button>
+          </form>
+        </section>
+      {% else %}
+        <section class="card">
+          <p><a href="{{ share_link }}">Join this room</a> to add songs and vote.</p>
+        </section>
+      {% endif %}
 
-  <h2>People</h2>
-  <ul>
-    {% for member in members %}
-      <li>{{ member.name }}{% if member.is_host %} (host){% endif %}</li>
-    {% endfor %}
-  </ul>
+      <section class="card">
+        <h2>People ({{ members | length }})</h2>
+        <ul class="members">
+          {% for member in members %}
+            <li class="member">
+              <span class="avatar avatar-{{ loop.index0 % 5 }}" aria-hidden="true">{{ member.name[0] | upper }}</span>
+              {{ member.name }}
+              {% if member.is_host %}<span class="tag">host</span>{% endif %}
+              {% if member.name == me %}<span class="tag">you</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    </div>
+  </div>
 {% endblock %}

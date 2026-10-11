@@ -1,18 +1,120 @@
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #121212;
-  color: #f5f5f5;
+:root {
+  --bg: #0e0f13;
+  --surface: #181a20;
+  --surface-2: #22252d;
+  --border: #2e323c;
+  --text: #f2f3f5;
+  --muted: #a3a8b4;
+  --accent: #1ed760;
+  --accent-dark: #0b3d1f;
+  --purple: #8b5cf6;
+  --error: #ff7a7a;
+  --gold: #f5c542;
+  --silver: #c9ced8;
+  --bronze: #d9895b;
+  --radius: 14px;
 }
 
-main {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background:
+    radial-gradient(900px 400px at 10% -10%, rgba(139, 92, 246, 0.25), transparent 60%),
+    radial-gradient(700px 400px at 100% 0%, rgba(30, 215, 96, 0.15), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
 }
 
 a {
-  color: #1db954;
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.logo {
+  width: 32px;
+  height: 32px;
+}
+
+main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 1rem 3rem;
+}
+
+h1,
+h2 {
+  line-height: 1.2;
+  margin: 0 0 0.75rem;
+}
+
+h1 {
+  font-size: clamp(2rem, 6vw, 3rem);
+}
+
+h2 {
+  font-size: 1.2rem;
+}
+
+.hero {
+  text-align: center;
+  padding: 2rem 0 2.5rem;
+}
+
+.hero h1 span {
+  background: linear-gradient(90deg, var(--accent), var(--purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero p {
+  color: var(--muted);
+  font-size: 1.1rem;
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.card-icon {
+  font-size: 1.6rem;
 }
 
 form {
@@ -20,16 +122,240 @@ form {
   gap: 0.5rem;
 }
 
-input,
-button {
-  font: inherit;
-  padding: 0.5rem;
+label {
+  font-size: 0.9rem;
+  color: var(--muted);
 }
 
-.error {
-  color: #ff6b6b;
+input {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+}
+
+input:focus {
+  border-color: var(--accent);
+}
+
+button,
+.button {
+  font: inherit;
+  font-weight: 600;
+  border: none;
+  border-radius: 999px;
+  padding: 0.65rem 1.2rem;
+  cursor: pointer;
+  background: var(--accent);
+  color: #06210f;
+  text-decoration: none;
+  transition: transform 0.1s ease, filter 0.1s ease;
+}
+
+button:hover,
+.button:hover {
+  filter: brightness(1.1);
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+.button-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.button-small {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.9rem;
 }
 
 form.inline {
   display: inline;
+}
+
+.error {
+  background: rgba(255, 122, 122, 0.12);
+  border: 1px solid var(--error);
+  color: var(--error);
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+}
+
+.back {
+  display: inline-block;
+  color: var(--muted);
+  text-decoration: none;
+  margin-bottom: 1rem;
+}
+
+.room-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.room-header h1 {
+  margin: 0;
+}
+
+.code-badge {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 1.4rem;
+  letter-spacing: 0.2em;
+  background: var(--surface-2);
+  border: 1px dashed var(--accent);
+  border-radius: 10px;
+  padding: 0.35rem 0.8rem;
+}
+
+.share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.room-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .room-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.playlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.song {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.9rem;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+}
+
+.rank {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.rank-1 {
+  background: var(--gold);
+  color: #3a2a00;
+  border: none;
+}
+
+.rank-2 {
+  background: var(--silver);
+  color: #24272e;
+  border: none;
+}
+
+.rank-3 {
+  background: var(--bronze);
+  color: #3a1a08;
+  border: none;
+}
+
+.song-title {
+  font-weight: 700;
+}
+
+.song-meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.vote-bar {
+  height: 6px;
+  background: var(--surface);
+  border-radius: 999px;
+  margin-top: 0.4rem;
+  overflow: hidden;
+}
+
+.vote-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--purple));
+  border-radius: 999px;
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 2rem 1rem;
+}
+
+.empty svg {
+  width: 56px;
+  height: 56px;
+  opacity: 0.6;
+}
+
+.members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.member {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #0e0f13;
+}
+
+.avatar-0 { background: #1ed760; }
+.avatar-1 { background: #a78bfa; }
+.avatar-2 { background: #f5c542; }
+.avatar-3 { background: #60a5fa; }
+.avatar-4 { background: #f472b6; }
+
+.tag {
+  font-size: 0.75rem;
+  background: var(--accent-dark);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
 }
