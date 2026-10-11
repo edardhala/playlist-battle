@@ -100,3 +100,15 @@ def test_songs_voted_by(conn):
     service.vote(conn, first, "Ben")
     assert service.songs_voted_by(conn, "Ben") == {first}
     assert service.songs_voted_by(conn, "Cleo") == set()
+
+
+def test_same_song_twice_in_a_room_is_blocked(conn):
+    service.add_song(conn, 1, "Yellow", "Coldplay", "Ana")
+    with pytest.raises(BattleError, match="already in the playlist"):
+        service.add_song(conn, 1, "yellow", " COLDPLAY ", "Ben")
+
+
+def test_same_song_in_another_room_is_allowed(conn):
+    service.add_song(conn, 1, "Yellow", "Coldplay", "Ana")
+    service.add_song(conn, 2, "Yellow", "Coldplay", "Ben")
+    assert len(service.list_songs(conn, 2)) == 1

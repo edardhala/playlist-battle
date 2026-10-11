@@ -38,6 +38,12 @@ def check_text(value, field):
 def add_song(conn, room_id, title, artist, added_by):
     title = check_text(title, "Title")
     artist = check_text(artist, "Artist")
+    existing = conn.execute(
+        "SELECT id FROM songs WHERE room_id = ? AND title = ? COLLATE NOCASE AND artist = ? COLLATE NOCASE",
+        (room_id, title, artist),
+    ).fetchone()
+    if existing is not None:
+        raise BattleError("That song is already in the playlist.")
     added_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     cur = conn.execute(
         "INSERT INTO songs (room_id, title, artist, added_by, added_at)"
