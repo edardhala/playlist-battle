@@ -21,8 +21,29 @@
 
   <div class="room-layout">
     <div>
+      {% if played %}
+        {% set current = played[0] %}
+        <section class="card now-playing">
+          <div class="equalizer" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+          <div>
+            <div class="now-label">Now playing</div>
+            <div class="song-title">{{ current.title }}</div>
+            <div class="song-meta">{{ current.artist }} · added by {{ current.added_by }}</div>
+          </div>
+          <a class="button button-small" href="https://www.youtube.com/results?search_query={{ (current.title ~ ' ' ~ current.artist) | urlencode }}" target="_blank" rel="noopener">▶ Listen</a>
+        </section>
+      {% endif %}
+
       <section class="card">
-        <h2>Playlist</h2>
+        <div class="playlist-header">
+          <h2>Playlist</h2>
+          {% if i_am_host and songs %}
+            <form class="inline" method="post" action="{{ url_for('battle.play', code=room.code) }}">
+              <input type="hidden" name="me" value="{{ me }}">
+              <button class="button-small" type="submit">▶ Play the winner</button>
+            </form>
+          {% endif %}
+        </div>
         {% if songs %}
           <ol class="playlist">
             {% for song in songs %}
@@ -35,6 +56,8 @@
                     <span style="width: {{ (song.votes / top_votes * 100) if top_votes else 0 }}%"></span>
                   </div>
                 </div>
+                <div class="song-actions">
+                <a class="button button-ghost button-small" href="https://www.youtube.com/results?search_query={{ (song.title ~ ' ' ~ song.artist) | urlencode }}" target="_blank" rel="noopener" aria-label="Listen to {{ song.title }} on YouTube">Listen</a>
                 {% if me and song.id in my_votes %}
                   <form class="inline" method="post" action="{{ url_for('battle.unvote', code=room.code, song_id=song.id) }}">
                     <input type="hidden" name="me" value="{{ me }}">
@@ -46,6 +69,7 @@
                     <button class="button-small" type="submit">▲ Vote</button>
                   </form>
                 {% endif %}
+                </div>
               </li>
             {% endfor %}
           </ol>
@@ -60,6 +84,17 @@
           </div>
         {% endif %}
       </section>
+
+      {% if played | length > 1 %}
+        <section class="card">
+          <h2>Played</h2>
+          <ol class="played">
+            {% for song in played[1:] %}
+              <li><span class="song-title">{{ song.title }}</span> <span class="song-meta">· {{ song.artist }}</span></li>
+            {% endfor %}
+          </ol>
+        </section>
+      {% endif %}
     </div>
 
     <div>

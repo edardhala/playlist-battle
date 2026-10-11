@@ -112,3 +112,33 @@ def test_same_song_in_another_room_is_allowed(conn):
     service.add_song(conn, 1, "Yellow", "Coldplay", "Ana")
     service.add_song(conn, 2, "Yellow", "Coldplay", "Ben")
     assert len(service.list_songs(conn, 2)) == 1
+
+
+def test_play_next_plays_the_top_song(conn):
+    quiet = service.add_song(conn, 1, "Quiet", "A", "Ana")
+    loud = service.add_song(conn, 1, "Loud", "B", "Ben")
+    service.vote(conn, loud, "Ana")
+    service.vote(conn, loud, "Ben")
+    assert service.play_next(conn, 1) == loud
+    assert [s["id"] for s in service.ranked_songs(conn, 1)] == [quiet]
+    assert [s["title"] for s in service.played_songs(conn, 1)] == ["Loud"]
+
+
+def test_played_songs_newest_first(conn):
+    service.add_song(conn, 1, "First", "A", "Ana")
+    service.play_next(conn, 1)
+    service.add_song(conn, 1, "Second", "B", "Ana")
+    service.play_next(conn, 1)
+    assert [s["title"] for s in service.played_songs(conn, 1)] == ["Second", "First"]
+
+
+def test_play_next_with_no_songs(conn):
+    with pytest.raises(BattleError, match="no songs left"):
+        service.play_next(conn, 1)
+
+
+def test_played_song_can_be_added_again(conn):
+    service.add_song(conn, 1, "Yellow", "Coldplay", "Ana")
+    service.play_next(conn, 1)
+    service.add_song(conn, 1, "Yellow", "Coldplay", "Ben")
+    assert len(service.ranked_songs(conn, 1)) == 1

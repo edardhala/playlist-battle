@@ -42,3 +42,16 @@ def unvote(code, song_id):
     find_room_id(code)
     service.remove_vote(get_db(), song_id, me)
     return redirect(url_for("rooms.show", code=code, me=me))
+
+
+@bp.post("/rooms/<code>/play")
+def play(code):
+    me = request.form["me"]
+    room_id = find_room_id(code)
+    if not rooms_service.is_host(get_db(), room_id, me):
+        return redirect(url_for("rooms.show", code=code, me=me, error="Only the host can play the next song."))
+    try:
+        service.play_next(get_db(), room_id)
+    except BattleError as err:
+        return redirect(url_for("rooms.show", code=code, me=me, error=str(err)))
+    return redirect(url_for("rooms.show", code=code, me=me))

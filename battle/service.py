@@ -17,6 +17,12 @@ CREATE TABLE IF NOT EXISTS votes (
     voter    TEXT NOT NULL,
     UNIQUE (song_id, voter)
 );
+
+CREATE TABLE IF NOT EXISTS played (
+    id         INTEGER PRIMARY KEY,
+    song_id    INTEGER NOT NULL UNIQUE REFERENCES songs(id),
+    played_at  TEXT NOT NULL
+);
 """
 
 MAX_TEXT_LENGTH = 80
@@ -39,7 +45,8 @@ def add_song(conn, room_id, title, artist, added_by):
     title = check_text(title, "Title")
     artist = check_text(artist, "Artist")
     existing = conn.execute(
-        "SELECT id FROM songs WHERE room_id = ? AND title = ? COLLATE NOCASE AND artist = ? COLLATE NOCASE",
+        "SELECT id FROM songs WHERE room_id = ? AND title = ? COLLATE NOCASE AND artist = ? COLLATE NOCASE"
+        " AND id NOT IN (SELECT song_id FROM played)",
         (room_id, title, artist),
     ).fetchone()
     if existing is not None:
@@ -58,7 +65,8 @@ def list_songs(conn, room_id):
     return conn.execute(
         "SELECT songs.*, COUNT(votes.id) AS votes FROM songs"
         " LEFT JOIN votes ON votes.song_id = songs.id"
-        " WHERE songs.room_id = ? GROUP BY songs.id ORDER BY songs.id DESC",
+        " WHERE songs.room_id = ? AND songs.id NOT IN (SELECT song_id FROM played)"
+        " GROUP BY songs.id ORDER BY songs.id DESC",
         (room_id,),
     ).fetchall()
 
@@ -93,3 +101,23 @@ def ranked_songs(conn, room_id, now=None):
     now = now or datetime.now(timezone.utc)
     songs = list_songs(conn, room_id)
     return sorted(songs, key=lambda song: hot_score(song["votes"], song["added_at"], now), reverse=True)
+
+
+def play_next(conn, room_id, now=None):
+    songs = ranked_songs(conn, room_id, now)
+    if not songs:
+        raise BattleError("There are no songs left to play.")
+    winner = songs[0]
+    played_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    conn.execute("INSERT INTO played (song_id, played_at) VALUES (?, ?)", (winner["id"], played_at))
+    conn.commit()
+    return winner["id"]
+
+
+def played_songs(conn, room_id):
+    return conn.execute(
+        "SELECT songs.*, played.played_at FROM played"
+        " JOIN songs ON songs.id = played.song_id"
+        " WHERE songs.room_id = ? ORDER BY played.id DESC",
+        (room_id,),
+    ).fetchall()

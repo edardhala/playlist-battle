@@ -36,6 +36,7 @@ def show(code):
     songs = battle_service.ranked_songs(conn, room["id"])
     me = request.args.get("me")
     my_votes = battle_service.songs_voted_by(conn, me) if me else set()
+    played = battle_service.played_songs(conn, room["id"])
     return render_template(
         "room.html",
         room=room,
@@ -43,5 +44,7 @@ def show(code):
         songs=songs,
         me=me,
         my_votes=my_votes,
+        played=played,
+        i_am_host=bool(me) and service.is_host(conn, room["id"], me),
         error=request.args.get("error"),
     )

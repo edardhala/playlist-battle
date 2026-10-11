@@ -50,3 +50,31 @@ def test_remove_vote_button(client, code):
     page = client.get(f"/rooms/{code}?me=Ana").get_data(as_text=True)
     assert "0 votes," in page
     assert "Remove vote" not in page
+
+
+def test_host_plays_the_winner(client, code):
+    client.post(f"/rooms/{code}/songs", data={"title": "Yellow", "artist": "Coldplay", "me": "Ana"})
+    page = client.get(f"/rooms/{code}?me=Ana").get_data(as_text=True)
+    assert "Play the winner" in page
+    assert "youtube.com/results?search_query=Yellow%20Coldplay" in page
+
+    client.post(f"/rooms/{code}/play", data={"me": "Ana"})
+    page = client.get(f"/rooms/{code}?me=Ana").get_data(as_text=True)
+    assert "Now playing" in page and "Yellow" in page
+
+
+def test_only_host_can_play(client, code):
+    client.post("/rooms/join", data={"code": code, "your_name": "Ben"})
+    client.post(f"/rooms/{code}/songs", data={"title": "Yellow", "artist": "Coldplay", "me": "Ben"})
+    assert "Play the winner" not in client.get(f"/rooms/{code}?me=Ben").get_data(as_text=True)
+
+    response = client.post(f"/rooms/{code}/play", data={"me": "Ben"})
+    page = client.get(response.headers["Location"]).get_data(as_text=True)
+    assert "Only the host can play the next song." in page
+    assert "Now playing" not in page
+
+
+def test_play_with_empty_playlist_shows_error(client, code):
+    response = client.post(f"/rooms/{code}/play", data={"me": "Ana"})
+    page = client.get(response.headers["Location"]).get_data(as_text=True)
+    assert "There are no songs left to play." in page

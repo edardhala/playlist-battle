@@ -63,3 +63,11 @@ def test_init_db_can_run_twice(tmp_path):
     conn = connect(path)
     assert service.get_room(conn, "ABCDEF") is None
     conn.close()
+
+
+def test_is_host(conn):
+    code = service.create_room(conn, "Road trip", "Ana")
+    service.join_room(conn, code, "Ben")
+    room_id = service.get_room(conn, code)["id"]
+    assert service.is_host(conn, room_id, "Ana")
+    assert not service.is_host(conn, room_id, "Ben")

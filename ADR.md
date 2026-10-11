@@ -23,3 +23,11 @@ Context: Rooms owns the `rooms` and `members` tables and Battle owns the `songs`
 Decision: `songs.room_id` stores the room's id as a plain number, with no foreign key to `rooms` and no JOINs across the two domains. Inside Battle, `votes.song_id` points to `songs`, and `UNIQUE (song_id, voter)` stops a person from voting twice for the same song.
 Alternatives considered: A foreign key from `songs.room_id` to `rooms.id` with JOINs between the tables. The database would check that the room exists, but the two domains would be tied together and could not be moved into separate databases later.
 Consequences: Battle could move to its own service and database later without changes. The cost is that the database can't stop a song from pointing to a room that doesn't exist, so the battle pages check that the room exists before adding a song.
+
+## 4. Testing approach
+Date: 2026-10-11
+Status: Decided
+Context: The assignment needs at least 70% coverage on the core business logic and I want tests that catch broken rules, not tests that only check Flask works.
+Decision: Most tests call the functions in `rooms/service.py` and `battle/service.py` directly, using an in-memory SQLite database so every test starts empty and runs fast. They cover the rules: name checks, room codes, joining, one vote per person, duplicate songs, the hot score and playing the winner. A smaller set of page tests uses Flask's test client to check the main paths and error messages. The hot score tests use a fixed time so they always give the same result. Result: 47 tests and 98% coverage, measured with `pytest --cov`.
+Alternatives considered: Browser tests with a tool like Selenium that click through the real pages. They test what a user sees, but they are slow, need a browser installed, and break when the design changes, so they are not worth it for an app this size.
+Consequences: The rules are fully tested and can be changed with confidence. The HTML and CSS are tested less: the tests check that the right text and buttons appear, but not how the pages look, so design problems have to be checked by hand in the browser.

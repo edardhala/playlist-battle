@@ -76,3 +76,11 @@ def list_members(conn, room_id):
         "SELECT * FROM members WHERE room_id = ? ORDER BY is_host DESC, id",
         (room_id,),
     ).fetchall()
+
+
+def is_host(conn, room_id, name):
+    row = conn.execute(
+        "SELECT id FROM members WHERE room_id = ? AND name = ? AND is_host = 1",
+        (room_id, name),
+    ).fetchone()
+    return row is not None
