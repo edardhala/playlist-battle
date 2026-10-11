@@ -26,3 +26,13 @@ def test_error_is_shown_on_home_page(client):
 
 def test_unknown_room_is_404(client):
     assert client.get("/rooms/ZZZZZZ").status_code == 404
+
+
+def test_share_link_fills_in_the_code(client):
+    response = client.post("/rooms", data={"room_name": "Road trip", "your_name": "Ana"})
+    code = response.headers["Location"].split("/")[-1].split("?")[0]
+    room_page = client.get(f"/rooms/{code}").get_data(as_text=True)
+    assert f"/?code={code}" in room_page
+
+    home_page = client.get(f"/?code={code}").get_data(as_text=True)
+    assert f'value="{code}"' in home_page

@@ -3,7 +3,10 @@
 {% block content %}
   <p><a href="{{ url_for('index') }}">← Home</a></p>
   <h1>{{ room.name }}</h1>
-  <p>Room code: <strong>{{ room.code }}</strong> (send it to your friends so they can join)</p>
+  <p>Room code: <strong>{{ room.code }}</strong></p>
+  <p>Share this link with your friends so they can join:
+    <a href="{{ url_for('index', code=room.code, _external=True) }}">{{ url_for('index', code=room.code, _external=True) }}</a>
+  </p>
 
   {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 

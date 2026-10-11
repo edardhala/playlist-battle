@@ -17,7 +17,7 @@
   <h2>Join a room</h2>
   <form method="post" action="{{ url_for('rooms.join') }}">
     <label for="code">Room code</label>
-    <input id="code" name="code" required>
+    <input id="code" name="code" value="{{ code }}" required>
     <label for="guest_name">Your name</label>
     <input id="guest_name" name="your_name" required>
     <button type="submit">Join the battle</button>

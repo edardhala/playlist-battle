@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 import db
 from battle import service as battle_service
@@ -21,7 +21,7 @@ def create_app(env=None):
 
     @app.get("/")
     def index():
-        return render_template("index.html")
+        return render_template("index.html", code=request.args.get("code", ""))
 
     @app.get("/health")
     def health():
