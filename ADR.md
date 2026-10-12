@@ -31,3 +31,11 @@ Context: The assignment needs at least 70% coverage on the core business logic a
 Decision: Most tests call the functions in `rooms/service.py` and `battle/service.py` directly, using an in-memory SQLite database so every test starts empty and runs fast. They cover the rules: name checks, room codes, joining, one vote per person, duplicate songs, the hot score and playing the winner. A smaller set of page tests uses Flask's test client to check the main paths and error messages. The hot score tests use a fixed time so they always give the same result. Result: 47 tests and 98% coverage, measured with `pytest --cov`.
 Alternatives considered: Browser tests with a tool like Selenium that click through the real pages. They test what a user sees, but they are slow, need a browser installed, and break when the design changes, so they are not worth it for an app this size.
 Consequences: The rules are fully tested and can be changed with confidence. The HTML and CSS are tested less: the tests check that the right text and buttons appear, but not how the pages look, so design problems have to be checked by hand in the browser.
+
+## 5. Not building user accounts or login
+Date: 2026-10-12
+Status: Decided
+Context: The app needs to know who adds a song, who votes and who the host is, but people use it with friends for one evening and won't want to sign up first.
+Decision: There are no accounts, passwords or sessions. After you create or join a room, your name is kept in the address (`?me=Ana`) and sent in a hidden `me` field when you add a song, vote or play the winner.
+Alternatives considered: Login with a password, or Flask sessions with a signed cookie. Both would stop people from pretending to be someone else, but they need a secret key, password hashing and more pages, which is too much for this project and slows down joining a room.
+Consequences: Joining a room takes a few seconds. The cost is that anyone can change the name in the address or the hidden field and vote, remove votes or play songs as someone else, including the host. If the app had real users, sessions would be the first thing to add.
