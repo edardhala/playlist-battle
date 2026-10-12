@@ -36,3 +36,35 @@ def test_share_link_fills_in_the_code(client):
 
     home_page = client.get(f"/?code={code}").get_data(as_text=True)
     assert f'value="{code}"' in home_page
+
+
+def test_version_changes_when_the_room_changes(client):
+    response = client.post("/rooms", data={"room_name": "Road trip", "your_name": "Ana"})
+    code = response.headers["Location"].split("/")[-1].split("?")[0]
+
+    def version():
+        return client.get(f"/rooms/{code}/version").get_json()["version"]
+
+    start = version()
+    assert version() == start
+
+    client.post("/rooms/join", data={"code": code, "your_name": "Ben"})
+    after_join = version()
+    assert after_join != start
+
+    client.post(f"/rooms/{code}/songs", data={"title": "Yellow", "artist": "Coldplay", "me": "Ana"})
+    after_song = version()
+    assert after_song != after_join
+
+    client.post(f"/rooms/{code}/songs/1/vote", data={"me": "Ben"})
+    assert version() != after_song
+
+
+def test_room_page_has_live_updates(client):
+    response = client.post("/rooms", data={"room_name": "Road trip", "your_name": "Ana"})
+    page = client.get(response.headers["Location"]).get_data(as_text=True)
+    assert "data-version-url" in page and "live.js" in page
+
+
+def test_version_of_unknown_room_is_404(client):
+    assert client.get("/rooms/ZZZZZZ/version").status_code == 404

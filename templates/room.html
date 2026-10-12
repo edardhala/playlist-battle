@@ -1,14 +1,15 @@
 {% extends "base.html" %}
-{% block title %}{{ room.name }} · Playlist Battle{% endblock %}
+{% block title %}{{ room.name }} · Playlist Battle  <script src="{{ url_for('static', filename='live.js') }}"></script>
+{% endblock %}
 {% block content %}
   {% set share_link = url_for('index', code=room.code, _external=True) %}
   {% set top_votes = songs | map(attribute='votes') | max if songs else 0 %}
 
   <a class="back" href="{{ url_for('index') }}">← Home</a>
 
-  <section class="card">
+  <section class="card" data-version="{{ version }}" data-version-url="{{ url_for('rooms.version', code=room.code) }}">
     <div class="room-header">
-      <h1>{{ room.name }}</h1>
+      <h1>{{ room.name }} <span class="live" title="This page updates by itself">Live</span></h1>
       <span class="code-badge" aria-label="Room code">{{ room.code }}</span>
     </div>
     <div class="share">
@@ -131,4 +132,5 @@
       </section>
     </div>
   </div>
+  <script src="{{ url_for('static', filename='live.js') }}"></script>
 {% endblock %}
