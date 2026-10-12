@@ -39,6 +39,22 @@ python app.py
 
 Then open http://localhost:8000. Health check: http://localhost:8000/health
 
+## Run with Docker
+
+The `Dockerfile` is the course template with its four TODO lines filled in.
+
+```bash
+docker build -t playlist-battle .
+docker run -p 8000:8000 -v playlist-battle-data:/data playlist-battle
+```
+
+Then open http://localhost:8000. The database is kept in the `playlist-battle-data`
+volume, so it survives `docker rm`. To use another port:
+
+```bash
+docker run -e PORT=9000 -p 9000:9000 -v playlist-battle-data:/data playlist-battle
+```
+
 ## Configuration
 
 All settings come from environment variables, and every one has a default.
@@ -48,8 +64,10 @@ All settings come from environment variables, and every one has a default.
 | `PORT`     | `8000`  | Port the server listens on (on `0.0.0.0`) |
 | `DATA_DIR` | `data`  | Folder for the SQLite file                |
 
-The database file is always `$DATA_DIR/playlist_battle.db`. The folder is
-created automatically on startup.
+Inside the Docker image `DATA_DIR` is `/data`. The database file is always
+`$DATA_DIR/playlist_battle.db`. The folder and the tables are created
+automatically on first start (`CREATE TABLE IF NOT EXISTS`), existing data is
+never dropped, and no seed data is needed.
 
 ## Project structure
 
@@ -88,3 +106,35 @@ Latest result: **50 tests passed, 98% coverage** of the app code.
 | `config.py`, `db.py` | 100% |
 
 The only lines not covered are the `python app.py` start-up lines and one error branch in `rooms/routes.py`.
+
+## Container contract check (§7)
+
+Output of the provided checker, `./container/run.sh .`, run on 2026-10-12 with Docker 28.4.0:
+
+```
+=== SDD Assignment 1 contract check ===
+Repository: /Users/edard/playlist-battle-1
+
+==> Repository shape
+  PASS  one Dockerfile, one manifest (requirements.txt)
+
+==> Build from a clean context, no build args
+  PASS  image built
+  PASS  image size 53 MB
+
+==> Start on PORT=8000 and reach it from the host
+  PASS  HTTP 200 from http://localhost:8000/
+
+==> SQLite file under DATA_DIR
+  PASS  found in /data: playlist_battle.db 
+
+==> Data persists, and a second boot does not re-seed
+  PASS  volume at /data persists
+  PASS  row counts unchanged across restart: members=0 played=0 rooms=0 songs=0 votes=0 
+
+==> PORT override is honoured (not hardcoded)
+  PASS  HTTP 200 from http://localhost:9123/
+
+=== ALL CHECKS PASSED ===
+Paste this output into your README as the §7 evidence.
+```
