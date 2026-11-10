@@ -1,0 +1,212 @@
+openapi: 3.0.3
+info:
+  title: Playlist Battle battle service
+  version: 1.0.0
+  description: >
+    Songs, votes and played songs. Owns the songs, votes and played tables.
+    Before every change it asks the rooms service (GET /rooms/{code}) if the person is in the room.
+servers:
+  - url: http://localhost:8002
+paths:
+  /health:
+    get:
+      summary: Health of this service and its database
+      responses:
+        "200":
+          description: The service can read and write its database
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          description: The database cannot be reached
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+  /rooms/{code}/playlist:
+    get:
+      summary: Ranked playlist and played songs of a room
+      description: If rooms is down, the playlist still works for rooms seen before, with rooms_available false.
+      parameters:
+        - $ref: "#/components/parameters/Code"
+        - name: me
+          in: query
+          required: false
+          description: Your name, to mark the songs you voted for
+          schema: { type: string }
+      responses:
+        "200":
+          description: The playlist
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Playlist" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/RoomsUnavailable" }
+  /rooms/{code}/songs:
+    post:
+      summary: Add a song to the playlist
+      parameters:
+        - $ref: "#/components/parameters/Code"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, artist, me]
+              properties:
+                title: { type: string, maxLength: 80 }
+                artist: { type: string, maxLength: 80 }
+                me: { type: string }
+      responses:
+        "201":
+          description: Song added
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Id" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/RoomsUnavailable" }
+  /rooms/{code}/songs/{song_id}/vote:
+    post:
+      summary: Vote for a song
+      parameters:
+        - $ref: "#/components/parameters/Code"
+        - $ref: "#/components/parameters/SongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Me" }
+      responses:
+        "204": { description: Vote saved }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/RoomsUnavailable" }
+    delete:
+      summary: Remove your vote
+      parameters:
+        - $ref: "#/components/parameters/Code"
+        - $ref: "#/components/parameters/SongId"
+        - name: me
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Vote removed }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/RoomsUnavailable" }
+  /rooms/{code}/play:
+    post:
+      summary: Play the top ranked song (host only)
+      parameters:
+        - $ref: "#/components/parameters/Code"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Me" }
+      responses:
+        "200":
+          description: The song now playing
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Id" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/RoomsUnavailable" }
+components:
+  parameters:
+    Code:
+      name: code
+      in: path
+      required: true
+      schema: { type: string, example: ABC234 }
+    SongId:
+      name: song_id
+      in: path
+      required: true
+      schema: { type: integer }
+  responses:
+    BadRequest:
+      description: Bad input, or the song or vote already exists, or there are no songs
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Not in the room, or not the host
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No room with that code
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RoomsUnavailable:
+      description: Rooms did not answer in time
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Health:
+      type: object
+      required: [status, db, version]
+      properties:
+        status: { type: string, enum: [ok, error] }
+        db: { type: string, enum: [ok, error] }
+        version: { type: string }
+    Me:
+      type: object
+      required: [me]
+      properties:
+        me: { type: string }
+    Id:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer }
+    Song:
+      type: object
+      required: [id, title, artist, added_by, added_at]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        artist: { type: string }
+        added_by: { type: string }
+        added_at: { type: string, format: date-time }
+    RankedSong:
+      allOf:
+        - $ref: "#/components/schemas/Song"
+        - type: object
+          required: [votes, voted_by_me]
+          properties:
+            votes: { type: integer }
+            voted_by_me: { type: boolean }
+    PlayedSong:
+      allOf:
+        - $ref: "#/components/schemas/Song"
+        - type: object
+          required: [played_at]
+          properties:
+            played_at: { type: string, format: date-time }
+    Playlist:
+      type: object
+      required: [songs, played, rooms_available]
+      properties:
+        songs:
+          type: array
+          items: { $ref: "#/components/schemas/RankedSong" }
+        played:
+          type: array
+          description: Newest first. The first one is playing now
+          items: { $ref: "#/components/schemas/PlayedSong" }
+        rooms_available: { type: boolean }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
