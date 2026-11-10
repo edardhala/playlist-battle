@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Room · Playlist Battle</title>
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="site-header" href="index.html">
+    <img class="logo" src="logo.svg" alt="">
+    Playlist Battle
+  </a>
+  <main>
+    <a class="back" href="index.html">← Home</a>
+
+    <section class="card">
+      <div class="room-header">
+        <h1><span id="room-name">Loading…</span> <span class="live" title="This page updates by itself">Live</span></h1>
+        <span class="code-badge" aria-label="Room code" id="room-code"></span>
+      </div>
+      <div class="share">
+        Share this link with your friends so they can join:
+        <a id="share-link"></a>
+      </div>
+    </section>
+
+    <p class="error" role="alert" id="error" hidden></p>
+    <p class="notice" role="status" id="rooms-notice" hidden></p>
+    <p class="notice" role="status" id="battle-notice" hidden></p>
+
+    <div class="room-layout">
+      <div>
+        <div id="now-playing"></div>
+
+        <section class="card">
+          <div class="playlist-header">
+            <h2>Playlist</h2>
+            <button class="button-small" type="button" id="play" hidden>▶ Play the winner</button>
+          </div>
+          <div id="playlist"></div>
+        </section>
+
+        <section class="card" id="played-card" hidden>
+          <h2>Played</h2>
+          <ol class="played" id="played"></ol>
+        </section>
+      </div>
+
+      <div>
+        <section class="card" id="add-card" hidden>
+          <h2>Add a song</h2>
+          <form id="add-form">
+            <label for="title">Title</label>
+            <input id="title" name="title" required>
+            <label for="artist">Artist</label>
+            <input id="artist" name="artist" required>
+            <button type="submit">Add song</button>
+          </form>
+        </section>
+        <section class="card" id="join-card" hidden>
+          <p><a id="join-link">Join this room</a> to add songs and vote.</p>
+        </section>
+
+        <section class="card">
+          <h2 id="people-title">People</h2>
+          <ul class="members" id="members"></ul>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="config.js"></script>
+  <script src="api.js"></script>
+  <script src="room.js"></script>
+</body>
+</html>
