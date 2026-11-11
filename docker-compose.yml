@@ -1,0 +1,70 @@
+name: playlist-battle
+
+x-mssql: &mssql
+  image: mcr.microsoft.com/mssql/server:2022-latest
+  platform: linux/amd64
+
+services:
+  sqlserver:
+    <<: *mssql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-Local_Dev_Only_1}
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  db-init:
+    <<: *mssql
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-Local_Dev_Only_1}
+      ROOMS_DB_PASSWORD: ${ROOMS_DB_PASSWORD:-Rooms_Local_Only_1}
+      BATTLE_DB_PASSWORD: ${BATTLE_DB_PASSWORD:-Battle_Local_Only_1}
+    volumes:
+      - ./db:/db:ro
+    entrypoint: ["/bin/bash", "-c", "/opt/mssql-tools18/bin/sqlcmd -C -S sqlserver -U sa -P \"$$MSSQL_SA_PASSWORD\" -b -i /db/init.sql -v ROOMS_DB_PASSWORD=\"$$ROOMS_DB_PASSWORD\" BATTLE_DB_PASSWORD=\"$$BATTLE_DB_PASSWORD\""]
+    restart: "no"
+
+  rooms:
+    build: services/rooms
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: mssql://rooms_user:${ROOMS_DB_PASSWORD:-Rooms_Local_Only_1}@sqlserver:1433/rooms_db
+      CORS_ORIGIN: http://localhost:8080
+    ports:
+      - "8001:8000"
+
+  battle:
+    build: services/battle
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: mssql://battle_user:${BATTLE_DB_PASSWORD:-Battle_Local_Only_1}@sqlserver:1433/battle_db
+      CORS_ORIGIN: http://localhost:8080
+      ROOMS_URL: http://rooms:8000
+      ROOMS_TIMEOUT_S: "2"
+    ports:
+      - "8002:8000"
+
+  ui:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./ui:/usr/share/nginx/html:ro
+    ports:
+      - "8080:80"
+
+volumes:
+  sqlserver-data:

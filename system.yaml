@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=./system.schema.json
+student: ehala.ieu2024
+prefix: ehala-ieu2024
+public_url: https://ehala-ieu2024-ui.azurestaticapps.net
+ui:
+  path: ui
+  static_web_app: ehala-ieu2024-ui
+  calls: [rooms, battle]
+azure:
+  resource_group: rg-sdd-3a
+  container_apps_environment: ehala-ieu2024-env
+  sql_server: ehala-ieu2024-sql
+  registry: ghcr.io/edardhala
+services:
+  rooms:
+    description: Rooms, the people in them and the host.
+    path: services/rooms
+    openapi: services/rooms/openapi.yaml
+    port_default: 8000
+    health: /health
+    migrations: services/rooms/migrations
+    env:
+      PORT: { default: 8000, description: Port the service listens on }
+      DATABASE_URL: { secret: true, description: "Address of the rooms database, mssql://user:password@host:port/database" }
+      CORS_ORIGIN: { default: "http://localhost:8080", description: Address of the UI that may call this service }
+      GIT_SHA: { default: dev, description: "Commit SHA shown by /health" }
+    calls: []
+    azure:
+      container_app: ehala-ieu2024-rooms
+      sql_database: ehala-ieu2024-rooms-db
+  battle:
+    description: Songs, votes and played songs.
+    path: services/battle
+    openapi: services/battle/openapi.yaml
+    port_default: 8000
+    health: /health
+    migrations: services/battle/migrations
+    env:
+      PORT: { default: 8000, description: Port the service listens on }
+      DATABASE_URL: { secret: true, description: "Address of the battle database, mssql://user:password@host:port/database" }
+      CORS_ORIGIN: { default: "http://localhost:8080", description: Address of the UI that may call this service }
+      GIT_SHA: { default: dev, description: "Commit SHA shown by /health" }
+      ROOMS_URL: { default: "http://rooms:8000", description: Base URL of the rooms service }
+      ROOMS_TIMEOUT_S: { default: 2, description: Seconds to wait for rooms }
+    calls:
+      - service: rooms
+        url_env: ROOMS_URL
+        endpoints: ["GET /rooms/{code}"]
+        timeout_s: 2
+        on_failure: >
+          Adding songs, voting and playing return 503 with "Rooms are not available right now".
+          The playlist still works for rooms battle has seen before, with rooms_available false.
+          For other rooms it returns 503.
+    azure:
+      container_app: ehala-ieu2024-battle
+      sql_database: ehala-ieu2024-battle-db

@@ -1,0 +1,124 @@
+openapi: 3.0.3
+info:
+  title: Playlist Battle rooms service
+  version: 1.0.0
+  description: Rooms and the people in them. Owns the rooms and members tables.
+servers:
+  - url: http://localhost:8001
+paths:
+  /health:
+    get:
+      summary: Health of this service and its database
+      responses:
+        "200":
+          description: The service can read and write its database
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          description: The database cannot be reached
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+  /rooms:
+    post:
+      summary: Create a room with its host
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [room_name, your_name]
+              properties:
+                room_name: { type: string, maxLength: 30, example: Road trip }
+                your_name: { type: string, maxLength: 30, example: Ana }
+      responses:
+        "201":
+          description: Room created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Room" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /rooms/{code}:
+    get:
+      summary: Get a room and its members
+      description: Battle calls this to get the room id and check who is in the room.
+      parameters:
+        - $ref: "#/components/parameters/Code"
+      responses:
+        "200":
+          description: The room
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Room" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /rooms/{code}/members:
+    post:
+      summary: Join a room
+      parameters:
+        - $ref: "#/components/parameters/Code"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [your_name]
+              properties:
+                your_name: { type: string, maxLength: 30, example: Ben }
+      responses:
+        "201":
+          description: Joined
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Room" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+components:
+  parameters:
+    Code:
+      name: code
+      in: path
+      required: true
+      description: The 6 letter room code, upper or lower case
+      schema: { type: string, example: ABC234 }
+  responses:
+    BadRequest:
+      description: Bad input, no such room, or the name is taken
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No room with that code
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Health:
+      type: object
+      required: [status, db, version]
+      properties:
+        status: { type: string, enum: [ok, error] }
+        db: { type: string, enum: [ok, error] }
+        version: { type: string, description: Git commit SHA of the image }
+    Member:
+      type: object
+      required: [name, is_host]
+      properties:
+        name: { type: string }
+        is_host: { type: boolean }
+    Room:
+      type: object
+      required: [id, code, name, members]
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/Member" }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
