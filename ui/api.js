@@ -1,4 +1,6 @@
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 45000;
+const STARTING_UP =
+  "Can't reach the server. If the app was idle, it is starting up, which can take up to a minute. Try again shortly.";
 
 async function call(baseUrl, path, options = {}) {
   const controller = new AbortController();
@@ -12,13 +14,14 @@ async function call(baseUrl, path, options = {}) {
       signal: controller.signal,
     });
   } catch {
-    throw new ApiError("Can't connect right now. Try again in a moment.", 0);
+    throw new ApiError(STARTING_UP, 0);
   } finally {
     clearTimeout(timer);
   }
   const data = response.status === 204 ? {} : await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new ApiError(data.error || "Something went wrong.", response.status);
+    const fallback = response.status === 503 ? STARTING_UP : "Something went wrong.";
+    throw new ApiError(data.error || fallback, response.status);
   }
   return data;
 }

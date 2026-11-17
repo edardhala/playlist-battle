@@ -7,14 +7,14 @@
   "properties": {
     "student": { "type": "string", "pattern": "^[a-z0-9.]+$" },
     "prefix": { "type": "string", "pattern": "^[a-z0-9-]+$" },
-    "public_url": { "type": "string", "pattern": "^https://" },
+    "public_url": { "type": "string", "pattern": "^https://[a-z0-9]+\\.z[0-9]+\\.web\\.core\\.windows\\.net/?$" },
     "ui": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "static_web_app", "calls"],
+      "required": ["path", "storage_account", "calls"],
       "properties": {
         "path": { "type": "string" },
-        "static_web_app": { "type": "string" },
+        "storage_account": { "type": "string", "pattern": "^[a-z0-9]{3,24}$" },
         "calls": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
       }
     },
@@ -23,7 +23,7 @@
       "additionalProperties": false,
       "required": ["resource_group", "container_apps_environment", "sql_server", "registry"],
       "properties": {
-        "resource_group": { "enum": ["rg-sdd-3a", "rg-sdd-3b"] },
+        "resource_group": { "type": "string", "pattern": "^rg-[a-z0-9-]+$" },
         "container_apps_environment": { "type": "string" },
         "sql_server": { "type": "string" },
         "registry": { "type": "string" }
