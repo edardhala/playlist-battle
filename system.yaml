@@ -1,13 +1,13 @@
 # yaml-language-server: $schema=./system.schema.json
 student: ehala.ieu2024
 prefix: ehala-ieu2024
-public_url: https://ehala-ieu2024-ui.azurestaticapps.net
+public_url: https://ehalaieu2024ui.z38.web.core.windows.net
 ui:
   path: ui
-  static_web_app: ehala-ieu2024-ui
+  storage_account: ehalaieu2024ui
   calls: [rooms, battle]
 azure:
-  resource_group: rg-sdd-3a
+  resource_group: rg-ehala-ieu2024
   container_apps_environment: ehala-ieu2024-env
   sql_server: ehala-ieu2024-sql
   registry: ghcr.io/edardhala
