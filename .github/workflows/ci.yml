@@ -85,3 +85,76 @@ jobs:
             ${{ env.IMAGE }}:latest
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    env:
+      RG: rg-ehala-ieu2024
+      PREFIX: ehala-ieu2024
+      ENV_NAME: ehala-ieu2024-env
+      STORAGE: ehalaieu2024ui
+      SQL_HOST: ehala-ieu2024-sql.database.windows.net
+      REGISTRY: ghcr.io/${{ github.repository_owner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - run: az extension add --name containerapp --upgrade --only-show-errors
+      - name: Find the UI address
+        run: |
+          origin=$(az storage account show -g "$RG" -n "$STORAGE" --query primaryEndpoints.web -o tsv)
+          echo "UI_ORIGIN=${origin%/}" >> "$GITHUB_ENV"
+      - name: Deploy rooms
+        run: |
+          fqdn=$(infra/deploy-service.sh rooms "$REGISTRY/playlist-battle-rooms:$GITHUB_SHA" \
+            "${{ secrets.ROOMS_DB_PASSWORD }}" "CORS_ORIGIN=$UI_ORIGIN")
+          echo "ROOMS_URL=https://$fqdn" >> "$GITHUB_ENV"
+      - name: Deploy battle
+        run: |
+          fqdn=$(infra/deploy-service.sh battle "$REGISTRY/playlist-battle-battle:$GITHUB_SHA" \
+            "${{ secrets.BATTLE_DB_PASSWORD }}" "CORS_ORIGIN=$UI_ORIGIN" "ROOMS_URL=$ROOMS_URL")
+          echo "BATTLE_URL=https://$fqdn" >> "$GITHUB_ENV"
+      - name: Upload the UI
+        run: |
+          mkdir -p build
+          cp -R ui/. build/
+          cat > build/config.js <<CONFIG
+          window.CONFIG = {
+            ROOMS_URL: "$ROOMS_URL",
+            BATTLE_URL: "$BATTLE_URL",
+          };
+          CONFIG
+          az storage blob upload-batch --account-name "$STORAGE" --auth-mode key \
+            --destination '$web' --source build --overwrite \
+            --content-cache-control "no-cache" --only-show-errors -o none
+      - name: Check health
+        run: |
+          for url in "$ROOMS_URL" "$BATTLE_URL"; do
+            for attempt in $(seq 1 20); do
+              if curl -fsS --max-time 30 "$url/health"; then
+                echo
+                continue 2
+              fi
+              echo "$url not healthy yet (attempt $attempt), waiting"
+              sleep 10
+            done
+            echo "$url did not become healthy"
+            exit 1
+          done
+      - name: Show startup logs
+        if: always()
+        run: |
+          for service in rooms battle; do
+            az containerapp logs show -g "$RG" -n "$PREFIX-$service" --tail 40 --format text || true
+          done

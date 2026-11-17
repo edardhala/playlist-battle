@@ -138,3 +138,116 @@ Repository: /Users/edard/playlist-battle-1
 === ALL CHECKS PASSED ===
 Paste this output into your README as the §7 evidence.
 ```
+
+## Deploy to Azure
+
+### How deployment works
+
+Every push to `main` runs the `CI` workflow. When tests, validation and image builds pass, the `deploy` job:
+
+1. signs in to Azure as the managed identity `ehala-ieu2024-github` through OpenID Connect, so no Azure password is stored;
+2. deploys `ghcr.io/edardhala/playlist-battle-rooms:<sha>` and `...-battle:<sha>` to the container apps with `infra/deploy-service.sh`, creating them on the first run. The database address is set as a Container Apps secret, and each app scales from 0 to 1 replica;
+3. writes `config.js` with the two service addresses and uploads `ui/` to the `$web` container of the storage account;
+4. calls `/health` on both services and fails if either does not answer 200 within about 10 minutes;
+5. prints the last log lines of both services, which show the migrations applied at startup.
+
+### Initial setup (run once)
+
+Run these one at a time from the repository root, signed in with `az login` to the Azure for Students subscription. Pick a region from the allowed list:
+
+```sh
+az policy assignment list --query "[?displayName=='Allowed resource deployment regions'].parameters.listOfAllowedLocations.value" -o tsv
+```
+
+Variables used below:
+
+```sh
+PREFIX=ehala-ieu2024
+RG=rg-$PREFIX
+LOCATION=italynorth
+REPO=edardhala/playlist-battle
+STORAGE=ehalaieu2024ui
+```
+
+Register the providers and create the resource group:
+
+```sh
+for p in Microsoft.App Microsoft.Sql Microsoft.Storage Microsoft.ManagedIdentity; do az provider register -n $p --wait; done
+az group create -n $RG -l $LOCATION
+```
+
+Managed identity for GitHub Actions, trusted only for runs on `main`, with Contributor on the resource group only:
+
+```sh
+az identity create -g $RG -n $PREFIX-github
+az identity federated-credential create -g $RG --identity-name $PREFIX-github -n github-main \
+  --issuer https://token.actions.githubusercontent.com \
+  --subject "repo:${REPO}:ref:refs/heads/main" \
+  --audiences api://AzureADTokenExchange
+az role assignment create --role Contributor \
+  --assignee-object-id $(az identity show -g $RG -n $PREFIX-github --query principalId -o tsv) \
+  --assignee-principal-type ServicePrincipal \
+  --scope $(az group show -n $RG --query id -o tsv)
+```
+
+SQL server and one serverless database per service on the free offer. Choose an admin password and keep it in a password manager, not in the repository:
+
+```sh
+read -s SQL_ADMIN_PASSWORD
+az sql server create -g $RG -n $PREFIX-sql -l $LOCATION --admin-user sqladmin --admin-password "$SQL_ADMIN_PASSWORD"
+az sql server firewall-rule create -g $RG -s $PREFIX-sql -n AllowAzureServices --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
+for s in rooms battle; do
+  az sql db create -g $RG -s $PREFIX-sql -n $PREFIX-$s-db \
+    --edition GeneralPurpose --compute-model Serverless --family Gen5 \
+    --min-capacity 0.5 --capacity 1 --backup-storage-redundancy Local \
+    --use-free-limit --free-limit-exhaustion-behavior AutoPause
+done
+```
+
+One user per service, inside its own database only. Use passwords made of letters and digits, since they go into a URL. This needs `sqlcmd` (`brew install sqlcmd`) and your IP in the firewall for a few minutes:
+
+```sh
+read -s ROOMS_DB_PASSWORD
+read -s BATTLE_DB_PASSWORD
+az sql server firewall-rule create -g $RG -s $PREFIX-sql -n setup-my-ip \
+  --start-ip-address $(curl -s https://api.ipify.org) --end-ip-address $(curl -s https://api.ipify.org)
+sqlcmd -S $PREFIX-sql.database.windows.net -d $PREFIX-rooms-db -U sqladmin -P "$SQL_ADMIN_PASSWORD" \
+  -v USER_NAME=rooms_user -v USER_PASSWORD="$ROOMS_DB_PASSWORD" -i infra/azure-users.sql
+sqlcmd -S $PREFIX-sql.database.windows.net -d $PREFIX-battle-db -U sqladmin -P "$SQL_ADMIN_PASSWORD" \
+  -v USER_NAME=battle_user -v USER_PASSWORD="$BATTLE_DB_PASSWORD" -i infra/azure-users.sql
+az sql server firewall-rule delete -g $RG -s $PREFIX-sql -n setup-my-ip
+```
+
+Container Apps environment on the Consumption plan, without a Log Analytics workspace (logs are read with `az containerapp logs show`):
+
+```sh
+az extension add --name containerapp --upgrade
+az containerapp env create -g $RG -n $PREFIX-env -l $LOCATION --logs-destination none --enable-workload-profiles false
+```
+
+Storage account with static website hosting for the UI:
+
+```sh
+az storage account create -g $RG -n $STORAGE -l $LOCATION --sku Standard_LRS --kind StorageV2 --allow-blob-public-access false
+az storage blob service-properties update --account-name $STORAGE --auth-mode key \
+  --static-website --index-document index.html --404-document index.html
+az storage account show -g $RG -n $STORAGE --query primaryEndpoints.web -o tsv
+```
+
+GitHub secrets read by the `deploy` job:
+
+```sh
+gh secret set AZURE_CLIENT_ID --body "$(az identity show -g $RG -n $PREFIX-github --query clientId -o tsv)"
+gh secret set AZURE_TENANT_ID --body "$(az account show --query tenantId -o tsv)"
+gh secret set AZURE_SUBSCRIPTION_ID --body "$(az account show --query id -o tsv)"
+gh secret set ROOMS_DB_PASSWORD --body "$ROOMS_DB_PASSWORD"
+gh secret set BATTLE_DB_PASSWORD --body "$BATTLE_DB_PASSWORD"
+```
+
+Reader access for grading, with the command from the setup guide:
+
+```sh
+az role assignment create --role Reader --assignee <professor email> --scope $(az group show -n $RG --query id -o tsv)
+```
+
+The container apps are created by the first `deploy` run, not by hand.
