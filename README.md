@@ -178,11 +178,14 @@ az group create -n $RG -l $LOCATION
 
 Managed identity for GitHub Actions, trusted only for runs on `main`, with Contributor on the resource group only:
 
+This repository's OIDC tokens name the owner and repository with their IDs (`repo:edardhala@207720258/playlist-battle@1405785844:...`), so the subject is read from GitHub instead of typed. With the plain `repo:edardhala/playlist-battle:...` form, the login fails with `AADSTS700213`.
+
 ```sh
+SUBJECT="$(gh api repos/$REPO/actions/oidc/customization/sub --jq .sub_claim_prefix):ref:refs/heads/main"
 az identity create -g $RG -n $PREFIX-github
 az identity federated-credential create -g $RG --identity-name $PREFIX-github -n github-main \
   --issuer https://token.actions.githubusercontent.com \
-  --subject "repo:${REPO}:ref:refs/heads/main" \
+  --subject "$SUBJECT" \
   --audiences api://AzureADTokenExchange
 az role assignment create --role Contributor \
   --assignee-object-id $(az identity show -g $RG -n $PREFIX-github --query principalId -o tsv) \
