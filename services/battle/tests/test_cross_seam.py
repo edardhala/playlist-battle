@@ -1,3 +1,4 @@
+import logging
 import time
 
 from rooms_client import RoomsClient, RoomsUnavailable
@@ -68,3 +69,17 @@ def test_rooms_down_and_room_never_seen_is_503(client, rooms_stub):
     rooms_stub.status = 503
     response = client.get("/rooms/ROOM01/playlist")
     assert response.status_code == 503
+
+
+def test_each_call_to_rooms_is_logged(rooms_stub, caplog):
+    with caplog.at_level(logging.INFO, logger="rooms_client"):
+        RoomsClient(rooms_stub.url, 0.5).get_room("ROOM01")
+    message = caplog.records[-1].getMessage()
+    assert message.startswith("call rooms GET /rooms/ROOM01 200 ") and message.endswith("ms")
+
+
+def test_failed_call_to_rooms_is_logged_with_its_duration(rooms_stub, caplog):
+    rooms_stub.delay_s = 1
+    with caplog.at_level(logging.INFO, logger="rooms_client"), pytest.raises(RoomsUnavailable):
+        RoomsClient(rooms_stub.url, 0.3).get_room("ROOM01")
+    assert "call rooms GET /rooms/ROOM01 failed after" in caplog.records[-1].getMessage()

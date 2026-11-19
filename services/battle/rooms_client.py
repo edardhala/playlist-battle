@@ -1,9 +1,14 @@
 import logging
+import time
 from urllib.parse import quote
 
 import requests
 
 log = logging.getLogger(__name__)
+
+
+def elapsed_ms(started):
+    return (time.perf_counter() - started) * 1000
 
 
 class RoomsUnavailable(Exception):
@@ -17,16 +22,17 @@ class RoomsClient:
         self.room_ids = {}
 
     def get_room(self, code):
-        url = f"{self.base_url}/rooms/{quote(code.strip().upper())}"
+        path = f"/rooms/{quote(code.strip().upper())}"
+        started = time.perf_counter()
         try:
-            response = requests.get(url, timeout=self.timeout_s)
+            response = requests.get(self.base_url + path, timeout=self.timeout_s)
         except requests.RequestException as err:
-            log.warning("rooms service unreachable: %s", err)
+            log.warning("call rooms GET %s failed after %.1fms: %s", path, elapsed_ms(started), err)
             raise RoomsUnavailable() from err
+        log.info("call rooms GET %s %s %.1fms", path, response.status_code, elapsed_ms(started))
         if response.status_code == 404:
             return None
         if response.status_code != 200:
-            log.warning("rooms service answered %s", response.status_code)
             raise RoomsUnavailable()
         room = response.json()
         self.room_ids[room["code"]] = room["id"]
