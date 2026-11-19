@@ -2,6 +2,7 @@ import logging
 import sys
 import time
 
+import pymssql
 from flask import g, jsonify, request
 from werkzeug.exceptions import HTTPException
 
@@ -10,6 +11,8 @@ import db
 log = logging.getLogger("requests")
 
 HEALTH_RETRY_DELAYS = (1, 2)
+
+DATABASE_DOWN = "The database is not available right now. If the app was idle, it is starting up. Try again in a moment."
 
 
 def setup_logging():
@@ -42,6 +45,16 @@ def setup(app):
     @app.errorhandler(HTTPException)
     def http_error(err):
         return jsonify(error=err.description), err.code
+
+    @app.errorhandler(pymssql.Error)
+    def database_error(err):
+        log.warning("database error on %s %s: %s", request.method, request.path, err)
+        return jsonify(error=DATABASE_DOWN), 503
+
+    @app.errorhandler(Exception)
+    def unexpected_error(err):
+        log.exception("unexpected error on %s %s", request.method, request.path)
+        return jsonify(error="Something went wrong."), 500
 
     @app.get("/health")
     def health():

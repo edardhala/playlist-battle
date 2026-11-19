@@ -147,7 +147,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     RoomsUnavailable:
-      description: Rooms did not answer in time
+      description: Rooms did not answer in time, or this service's database could not be reached
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
