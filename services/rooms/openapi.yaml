@@ -40,6 +40,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Room" }
         "400": { $ref: "#/components/responses/BadRequest" }
+        "503": { $ref: "#/components/responses/DatabaseUnavailable" }
   /rooms/{code}:
     get:
       summary: Get a room and its members
@@ -53,6 +54,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Room" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/DatabaseUnavailable" }
   /rooms/{code}/members:
     post:
       summary: Join a room
@@ -74,6 +76,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Room" }
         "400": { $ref: "#/components/responses/BadRequest" }
+        "503": { $ref: "#/components/responses/DatabaseUnavailable" }
 components:
   parameters:
     Code:
@@ -90,6 +93,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     NotFound:
       description: No room with that code
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    DatabaseUnavailable:
+      description: The database could not be reached, for example while it resumes from pause
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

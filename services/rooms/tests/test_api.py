@@ -1,5 +1,9 @@
 import logging
 
+import pymssql
+
+import db
+import service
 import web
 
 
@@ -71,3 +75,23 @@ def test_preflight_allows_json_posts(client):
     response = client.options("/rooms", headers={"Origin": "http://localhost:8080", "Access-Control-Request-Method": "POST"})
     assert response.status_code == 200
     assert "Content-Type" in response.headers["Access-Control-Allow-Headers"]
+
+
+def test_database_error_is_503_json(client, monkeypatch):
+    def paused():
+        raise pymssql.OperationalError("database is resuming")
+
+    monkeypatch.setattr(db, "get_db", paused)
+    response = create(client)
+    assert response.status_code == 503
+    assert response.get_json() == {"error": web.DATABASE_DOWN}
+
+
+def test_unexpected_error_is_500_json(client, monkeypatch):
+    def broken(*args):
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(service, "get_room", broken)
+    response = client.get("/rooms/ABC234")
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Something went wrong."}

@@ -1,9 +1,11 @@
 import logging
 
+import pymssql
 import pytest
 
 import config
 import db
+import service
 import web
 
 
@@ -110,3 +112,23 @@ def test_migrations_are_applied_once(make_database):
     assert db.migrate(conn, "migrations") == ["001_create_songs_votes_played.sql"]
     assert db.migrate(conn, "migrations") == []
     conn.close()
+
+
+def test_database_error_is_503_json(client, monkeypatch):
+    def paused():
+        raise pymssql.OperationalError("database is resuming")
+
+    monkeypatch.setattr(db, "get_db", paused)
+    response = playlist(client)
+    assert response.status_code == 503
+    assert response.get_json() == {"error": web.DATABASE_DOWN}
+
+
+def test_unexpected_error_is_500_json(client, monkeypatch):
+    def broken(*args):
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(service, "ranked_songs", broken)
+    response = playlist(client)
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Something went wrong."}
