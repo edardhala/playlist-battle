@@ -3,7 +3,11 @@
 Friends join a shared room, submit songs, and vote. The playlist reorders
 itself by a "hot" score that mixes votes with how recently a song was added.
 
-Built as a single Flask process with SQLite (IE University, Individual Assignment 1).
+Live: **https://ehalaieu2024ui.z38.web.core.windows.net**
+
+The first visit after a quiet hour can take up to a minute, while the services and databases wake up (ADR 8).
+
+IE University, Individual Assignment 2: the Assignment 1 monolith split into two services, deployed on Azure.
 
 ## Features
 
@@ -14,102 +18,100 @@ Built as a single Flask process with SQLite (IE University, Individual Assignmen
 - **Listen links:** every song links to a YouTube search for it.
 - **Live updates:** the room page checks for changes every 5 seconds and refreshes by itself when someone joins, adds a song or votes (not while you are typing).
 
-## How to use it
+## How it is built
 
-1. Open http://localhost:8000, enter a room name and your name, and click **Start the battle**.
-2. Send the share link on the room page to your friends. They only need to type their name.
-3. Add songs and vote. The playlist reorders itself.
-4. As the host, click **Play the winner** to play the top song.
+| Part | What it does | Data |
+|---|---|---|
+| `services/rooms` | Rooms and their members | `rooms_db`: `rooms`, `members` |
+| `services/battle` | Songs, votes and played songs. Asks Rooms who is in a room before every write | `battle_db`: `songs`, `votes`, `played` |
+| `ui/` | Static HTML and JavaScript that calls both services | none |
 
-## Setup
+Each service is a Flask app with its own SQL Server database, its own migrations in `migrations/`, its own `Dockerfile`, tests and OpenAPI document (`openapi.yaml`). Both answer `GET /health`. The whole system is described in `system.yaml`, checked against `system.schema.json`. The decisions are in `ADR.md`.
 
-Requires Python 3.10+.
+## Run locally with compose
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-## Run
+Requires Docker.
 
 ```bash
-python app.py
+docker compose up --build
 ```
 
-Then open http://localhost:8000. Health check: http://localhost:8000/health
+Then open http://localhost:8080. Compose starts:
 
-## Run with Docker
+- `sqlserver`: SQL Server 2022 on port 1433, data kept in the `sqlserver-data` volume;
+- `db-init`: creates `rooms_db`, `battle_db` and one login per service (`db/init.sql`), then exits;
+- `rooms` on http://localhost:8001 and `battle` on http://localhost:8002, which run their migrations at startup;
+- `ui` on http://localhost:8080 (nginx serving `ui/`).
 
-The `Dockerfile` is the course template with its four TODO lines filled in.
+The passwords have local-only defaults and can be changed with `MSSQL_SA_PASSWORD`, `ROOMS_DB_PASSWORD` and `BATTLE_DB_PASSWORD`. Stop with `docker compose down` (add `-v` to delete the data).
+
+## Run a single service
+
+With compose, only the service and its database:
 
 ```bash
-docker build -t playlist-battle .
-docker run -p 8000:8000 -v playlist-battle-data:/data playlist-battle
+docker compose up --build rooms
 ```
 
-Then open http://localhost:8000. The database is kept in the `playlist-battle-data`
-volume, so it survives `docker rm`. To use another port:
+Or with Python 3.12, against the compose database:
 
 ```bash
-docker run -e PORT=9000 -p 9000:9000 -v playlist-battle-data:/data playlist-battle
+docker compose up -d db-init
+cd services/rooms
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+DATABASE_URL=mssql://rooms_user:Rooms_Local_Only_1@localhost:1433/rooms_db PORT=8001 python app.py
 ```
+
+Battle works the same way from `services/battle`, with `battle_user`, `Battle_Local_Only_1` and `battle_db`, plus `ROOMS_URL=http://localhost:8001`. Without Rooms, Battle still starts, but writes answer 503.
 
 ## Configuration
 
-All settings come from environment variables, and every one has a default.
+| Variable | Service | Default | Meaning |
+|---|---|---|---|
+| `DATABASE_URL` | both | none, required | `mssql://user:password@host:port/database` |
+| `PORT` | both | `8000` | Port the server listens on |
+| `CORS_ORIGIN` | both | `http://localhost:8080` | Address of the UI allowed to call the service |
+| `GIT_SHA` | both | `dev` | Version shown by `/health`, set at image build |
+| `ROOMS_URL` | battle | `http://rooms:8000` | Where Battle finds Rooms |
+| `ROOMS_TIMEOUT_S` | battle | `2` | How long Battle waits for Rooms |
 
-| Variable   | Default | Meaning                                   |
-|------------|---------|-------------------------------------------|
-| `PORT`     | `8000`  | Port the server listens on (on `0.0.0.0`) |
-| `DATA_DIR` | `data`  | Folder for the SQLite file                |
-
-Inside the Docker image `DATA_DIR` is `/data`. The database file is always
-`$DATA_DIR/playlist_battle.db`. The folder and the tables are created
-automatically on first start (`CREATE TABLE IF NOT EXISTS`), existing data is
-never dropped, and no seed data is needed.
-
-## Project structure
-
-```
-app.py              starts the app, creates the tables and registers both domains
-config.py           reads PORT and DATA_DIR from environment variables
-db.py               SQLite connection helpers shared by both domains
-rooms/service.py    Rooms domain rules: rooms and members tables
-rooms/routes.py     Rooms pages: create, join, room page
-battle/service.py   Battle domain rules: songs, votes, played tables and the hot score
-battle/routes.py    Battle actions: add song, vote, remove vote, play the winner
-templates/          HTML pages (Jinja)
-static/             CSS, logo and live.js (live updates)
-tests/              pytest tests
-```
-
-The two domains (Rooms and Battle) only share ids, never tables, so they could be split into separate services later (see ADR 2 and 3).
+The UI reads the two service addresses from `ui/config.js`, which the deploy job overwrites.
 
 ## Tests and coverage
 
+Unit and API tests need a SQL Server. Each test run creates its own databases and drops them at the end:
+
 ```bash
-pytest --cov=. --cov-report=term-missing
+docker compose up -d sqlserver
+cd services/rooms        # or services/battle
+pip install -r requirements-dev.txt
+ruff check .
+pytest --cov=. --cov-config=.coveragerc
 ```
 
-Test files are left out of the coverage number (see `.coveragerc`).
+`TEST_DATABASE_URL` points the tests to another server (default `mssql://sa:Local_Dev_Only_1@localhost:1433/master`). In `services/battle`, `tests/test_cross_seam.py` tests the calls to Rooms against a stub Rooms service (ADR 9).
 
-Latest result: **50 tests passed, 98% coverage** of the app code.
+Latest result (2026-11-21):
 
-| File | Coverage |
-|---|---|
-| `rooms/service.py` | 100% |
-| `battle/service.py` | 100% |
-| `battle/routes.py` | 100% |
-| `rooms/routes.py` | 96% |
-| `app.py` | 92% |
-| `config.py`, `db.py` | 100% |
+| Service | Tests | Coverage |
+|---|---|---|
+| rooms | 31 passed | 99% |
+| battle | 37 passed | 96% |
 
-The only lines not covered are the `python app.py` start-up lines and one error branch in `rooms/routes.py`.
+The end-to-end test runs against the whole compose stack, and stops and starts `rooms` to check that Battle degrades:
 
-## Container contract check (§7)
+```bash
+docker compose up -d --build
+pip install -r tests/e2e/requirements.txt
+pytest tests/e2e
+```
 
-Output of the provided checker, `./container/run.sh .`, run on 2026-10-12 with Docker 28.4.0:
+CI runs lint, the tests of both services with coverage (at least 70%), and the `system.yaml` and OpenAPI checks on every push.
+
+## Assignment 1 container contract check (§7)
+
+Output of the provided checker, `./container/run.sh .`, run on 2026-10-12 with Docker 28.4.0 against the Assignment 1 monolith, kept as the Assignment 1 evidence:
 
 ```
 === SDD Assignment 1 contract check ===
