@@ -1,0 +1,3 @@
+ALTER TABLE members
+ADD joined_at DATETIME2 NOT NULL
+    CONSTRAINT df_members_joined_at DEFAULT SYSUTCDATETIME();
