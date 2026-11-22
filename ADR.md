@@ -10,7 +10,7 @@ Consequences: This keeps the project simple with few dependencies and code that 
 
 ## 2. Splitting the app into two independent domains
 Date: 2026-10-06
-Status: Decided
+Status: Superseded by [6]
 Context: The app has to be easy to split into separate services later, so the two feature areas should not depend on each other's code or tables.
 Decision: Rooms and Battle each get their own folder with a `service.py` for the rules and a `routes.py` for the web pages. Battle will only store a room's id and never read the rooms tables directly. 
 Alternatives considered: One big `app.py` with all routes and SQL in it. It is quicker to start, but the two domains would get mixed together and would be hard to separate later.
@@ -18,7 +18,7 @@ Consequences: Each domain can be tested on its own and could become its own serv
 
 ## 3. How the two domains' data is connected in SQLite
 Date: 2026-10-09
-Status: Decided
+Status: Superseded by [7]
 Context: Rooms owns the `rooms` and `members` tables and Battle owns the `songs` and `votes` tables, but every song has to belong to a room.
 Decision: `songs.room_id` stores the room's id as a plain number, with no foreign key to `rooms` and no JOINs across the two domains. Inside Battle, `votes.song_id` points to `songs`, and `UNIQUE (song_id, voter)` stops a person from voting twice for the same song.
 Alternatives considered: A foreign key from `songs.room_id` to `rooms.id` with JOINs between the tables. The database would check that the room exists, but the two domains would be tied together and could not be moved into separate databases later.
@@ -68,7 +68,7 @@ Consequences: Idle cost is close to zero, and the price is a first visit of up t
 Date: 2026-11-21
 Status: Decided
 Context: Every push should be checked, and nothing should reach Azure unless the same commit passed. Battle depends on Rooms over HTTP, so the seam needs its own tests, but running both services and a database in every test is slow.
-Decision: The `CI` workflow runs on every push and pull request. The `test` job runs once per service, with a SQL Server container: `ruff check`, then `pytest` with coverage, failing under 70%. Tests use a real SQL Server, not SQLite, so the migrations and queries run exactly as on Azure, and each run creates its own database. The `validate` job checks `system.yaml` against `system.schema.json` and both OpenAPI files. The `images` job needs both, and pushes images tagged with the commit SHA only on `main`. The `deploy` job needs `images`, so it only runs when CI passed on the same commit, and it fails if `/health` does not answer. The cross-seam tests in `services/battle/tests/test_cross_seam.py` replace Rooms with a stub: a small Flask app on a real port that returns rooms in the same shape as `GET /rooms/{code}`, and can be made slow or return 500. They check the real HTTP client, the timeout, the 403 for non-members, the 503 when Rooms is down and the cached room id for reads. `tests/e2e/test_compose_stack.py` runs the same story against the whole compose stack, including stopping Rooms, and I run it by hand before merging.
+Decision: The `CI` workflow runs on every push and pull request. The `test` job runs once per service, with a SQL Server container: `ruff check`, then `pytest` with coverage, failing under 70%. Tests use a real SQL Server, not SQLite, so the migrations and queries run exactly as on Azure, and each run creates its own database. The `validate` job checks `system.yaml` against `system.schema.json` and both OpenAPI files. The `images` job needs both, and pushes images tagged with the commit SHA only on `main`. The `deploy` job needs `images`, so it only runs when CI passed on the same commit, and it fails if `/health` does not answer. The cross-seam tests in `services/battle/tests/test_cross_seam.py` replace Rooms with a stub: a small Flask app on a real port that returns rooms in the same shape as `GET /rooms/{code}`, and can be made slow or return 500. They check the real HTTP client, the timeout, the 403 for non-members, the 503 when Rooms is down and the cached room id for reads. `tests/e2e/test_compose_stack.py` runs the same story against the whole compose stack, including stopping Rooms, and it is run by hand.
 Alternatives considered: Running the compose stack in CI for every push, which is slower and depends on Docker in the runner. Contract testing tools such as Pact, which are a lot of setup for one endpoint.
 Consequences: A push gets an answer in a few minutes, and a broken test or schema blocks the deploy. The stub can drift from the real Rooms, so the stub returns the shape in `services/rooms/openapi.yaml`, and the end-to-end test covers the real pair. Deliberately not tested: the UI JavaScript, which is small and checked by hand; Azure itself (cold starts, the database resuming, OIDC), which is checked by the post-deploy health check and the logs; and load.
 
