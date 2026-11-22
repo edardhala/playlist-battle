@@ -111,6 +111,20 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - run: az extension add --name containerapp --upgrade --only-show-errors
+      - name: Send container logs to Log Analytics
+        run: |
+          if ! az monitor log-analytics workspace show -g "$RG" -n "$PREFIX-logs" -o none 2>/dev/null; then
+            az monitor log-analytics workspace create -g "$RG" -n "$PREFIX-logs" --sku PerGB2018 --retention-time 30 -o none
+          fi
+          workspace=$(az monitor log-analytics workspace show -g "$RG" -n "$PREFIX-logs" --query customerId -o tsv)
+          current=$(az containerapp env show -g "$RG" -n "$ENV_NAME" \
+            --query properties.appLogsConfiguration.logAnalyticsConfiguration.customerId -o tsv)
+          if [ "$current" != "$workspace" ]; then
+            key=$(az monitor log-analytics workspace get-shared-keys -g "$RG" -n "$PREFIX-logs" --query primarySharedKey -o tsv)
+            echo "::add-mask::$key"
+            az containerapp env update -g "$RG" -n "$ENV_NAME" --logs-destination log-analytics \
+              --logs-workspace-id "$workspace" --logs-workspace-key "$key" -o none
+          fi
       - name: Find the UI address
         run: |
           origin=$(az storage account show -g "$RG" -n "$STORAGE" --query primaryEndpoints.web -o tsv)
