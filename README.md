@@ -148,10 +148,11 @@ Paste this output into your README as the §7 evidence.
 Every push to `main` runs the `CI` workflow. When tests, validation and image builds pass, the `deploy` job:
 
 1. signs in to Azure as the managed identity `ehala-ieu2024-github` through OpenID Connect, so no Azure password is stored;
-2. deploys `ghcr.io/edardhala/playlist-battle-rooms:<sha>` and `...-battle:<sha>` to the container apps with `infra/deploy-service.sh`, creating them on the first run. The database address is set as a Container Apps secret, and each app scales from 0 to 1 replica;
-3. writes `config.js` with the two service addresses and uploads `ui/` to the `$web` container of the storage account;
-4. calls `/health` on both services and fails if either does not answer 200 within about 10 minutes;
-5. prints the last log lines of both services, which show the migrations applied at startup.
+2. creates the Log Analytics workspace `ehala-ieu2024-logs` if it is missing (pay per use, 30 days, free up to 5 GB a month) and connects the Container Apps environment to it, so the containers' logs are kept;
+3. deploys `ghcr.io/edardhala/playlist-battle-rooms:<sha>` and `...-battle:<sha>` to the container apps with `infra/deploy-service.sh`, creating them on the first run. The database address is set as a Container Apps secret, and each app scales from 0 to 1 replica;
+4. writes `config.js` with the two service addresses and uploads `ui/` to the `$web` container of the storage account;
+5. calls `/health` on both services and fails if either does not answer 200 within about 10 minutes;
+6. prints the last log lines of both services, which show the migrations applied at startup.
 
 ### Initial setup (run once)
 
@@ -174,7 +175,7 @@ STORAGE=ehalaieu2024ui
 Register the providers and create the resource group:
 
 ```sh
-for p in Microsoft.App Microsoft.Sql Microsoft.Storage Microsoft.ManagedIdentity; do az provider register -n $p --wait; done
+for p in Microsoft.App Microsoft.Sql Microsoft.Storage Microsoft.ManagedIdentity Microsoft.OperationalInsights; do az provider register -n $p --wait; done
 az group create -n $RG -l $LOCATION
 ```
 
@@ -223,7 +224,7 @@ sqlcmd -S $PREFIX-sql.database.windows.net -d $PREFIX-battle-db -U sqladmin -P "
 az sql server firewall-rule delete -g $RG -s $PREFIX-sql -n setup-my-ip
 ```
 
-Container Apps environment on the Consumption plan, without a Log Analytics workspace (logs are read with `az containerapp logs show`):
+Container Apps environment on the Consumption plan. It starts without logs, and the first `deploy` run creates the Log Analytics workspace `$PREFIX-logs` and connects it, so the workspace is named with the prefix:
 
 ```sh
 az extension add --name containerapp --upgrade
